@@ -2,7 +2,7 @@ module Main where
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
-
+import Numeric (readOct, readHex)
 -- main
 
 main :: IO ()
@@ -64,21 +64,31 @@ parseBool = do
 
 -- lisp number
 parseNumber :: Parser LispVal
-parseNumber = parsePlainDigits <|> parsePrefixedDigits <|> parseBinary 
+parseNumber = parsePlainNumber 
+    <|> parsePrefixedDigits 
+    <|> parseBinary
+    <|> parseOctal
+    <|> parseHex 
 
 digits = many1 digit
 
-parsePlainDigits = liftM (Number . read) $ digits
+parsePlainNumber = liftM (Number . read) $ digits
 
-parsePrefixedDigits = liftM (Number . read) $ try $ string "#d" >> digits
+-- prefixed number notation combinator
+prefixNumberParser :: String -> (String -> Integer) -> Parser Char -> Parser LispVal
+prefixNumberParser prefix reader parser' = liftM (Number . reader) $ try $ string prefix >> many1 parser'
 
-parseBinary = liftM (Number . readBinary) $ try $ string "#b" >> (many1 $ oneOf "01")
+parsePrefixedDigits = prefixNumberParser "#d" read digit
 
-readBinary :: String -> Integer
+parseBinary = prefixNumberParser "#b" readBinary (oneOf "01")
+
 readBinary = foldl readBinary' 0 where 
     readBinary' acc '0' = acc * 2  
     readBinary' acc '1' = (acc * 2) + 1  
 
+parseOctal = prefixNumberParser "#o" readOct' octDigit where readOct' = fst . head . readOct
+
+parseHex = prefixNumberParser "#x" readHex' hexDigit where readHex' = fst . head . readHex
 
 -- expression
 
