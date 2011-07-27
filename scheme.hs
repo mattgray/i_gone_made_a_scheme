@@ -52,7 +52,23 @@ parseString = do
                 'r' -> '\r'
                 't' -> '\t'
 
---lisp bool
+-- lisp char
+
+parseChar :: Parser LispVal
+parseChar = liftM (Character . getCharacter) $ string "#\\" >> (characterName <|> character) 
+    where
+        characterName = (try $ string "space" <|> string "newline")
+        
+        character = do
+            x' <- anyChar
+            notFollowedBy alphaNum
+            return [x']
+        
+        getCharacter "space" = ' '
+        getCharacter "newline" = '\n'
+        getCharacter (c:cs) = c
+
+-- lisp bool
 parseBool :: Parser LispVal
 parseBool = do
     char '#'
@@ -95,8 +111,9 @@ parseHex = prefixNumberParser "#x" readHex' hexDigit where readHex' = fst . head
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
-    <|> parseNumber
-    <|> parseBool
+    <|> try parseNumber
+    <|> try parseBool
+    <|> try parseChar
 
 -- language
 
@@ -106,4 +123,5 @@ data LispVal    = Atom String
                 | Number Integer
                 | String String
                 | Bool Bool
+                | Character Char
                 deriving Show
