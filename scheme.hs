@@ -127,7 +127,22 @@ parseOctal = prefixNumberParser "#o" readOct' octDigit where readOct' = fst . he
 
 parseHex = prefixNumberParser "#x" readHex' hexDigit where readHex' = fst . head . readHex
 
--- expression
+-- lisp list
+parseList :: Parser LispVal
+parseList = liftM List $ parseExpr `sepBy` spaces 
+
+-- lisp dotted list
+parseDottedList :: Parser LispVal
+parseDottedList = (liftM2 DottedList) head tail where
+	head = parseExpr `endBy` spaces 
+	tail = char '.' >> spaces >> parseExpr
+
+-- lisp quoted list
+parseQuoted :: Parser LispVal
+parseQuoted = liftM quote $ char '\'' >> parseExpr where quote x = List [Atom "quote", x]
+
+
+-- expression parser
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
@@ -137,6 +152,12 @@ parseExpr = parseAtom
     <|> try parseNumber
     <|> try parseBool
     <|> try parseChar
+    <|> parseQuoted
+    <|> do 
+	char '('
+	x <- try parseList <|> parseDottedList
+	char ')'
+	return x
 
 -- language
 
