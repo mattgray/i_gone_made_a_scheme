@@ -80,21 +80,32 @@ parseBool = do
 
 -- lisp number
 parseNumber :: Parser LispVal
-parseNumber = parsePlainNumber 
-    <|> parsePrefixedDigits 
+parseNumber =
+    parsePlainFloat
+    <|> parsePrefixedFloat
+    <|> parsePlainInteger
+    <|> parsePrefixedInteger
     <|> parseBinary
     <|> parseOctal
     <|> parseHex 
 
-digits = many1 digit
+parsePlainFloat = liftM (Float . read) $ try $ parseFloat
 
-parsePlainNumber = liftM (Number . read) $ digits
+parsePrefixedFloat = liftM (Float . read) $ try $ string "#d" >> parseFloat
+
+parseFloat = do
+            x <- many1 digit
+            char '.'
+            y <- many1 digit
+            return $ x ++ "." ++ y
+
+parsePlainInteger = liftM (Number . read) $ many1 digit
 
 -- prefixed number notation combinator
 prefixNumberParser :: String -> (String -> Integer) -> Parser Char -> Parser LispVal
 prefixNumberParser prefix reader parser' = liftM (Number . reader) $ try $ string prefix >> many1 parser'
 
-parsePrefixedDigits = prefixNumberParser "#d" read digit
+parsePrefixedInteger = prefixNumberParser "#d" read digit
 
 parseBinary = prefixNumberParser "#b" readBinary (oneOf "01")
 
@@ -121,6 +132,7 @@ data LispVal    = Atom String
                 | List [LispVal]
                 | DottedList [LispVal] LispVal
                 | Number Integer
+                | Float Double
                 | String String
                 | Bool Bool
                 | Character Char
