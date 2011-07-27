@@ -3,6 +3,7 @@ import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
 import Numeric (readOct, readHex)
+import Data.Complex
 -- main
 
 main :: IO ()
@@ -80,20 +81,29 @@ parseBool = do
 
 -- lisp number
 parseNumber :: Parser LispVal
-parseNumber =
-    parsePlainFloat
-    <|> parsePrefixedFloat
-    <|> parsePlainInteger
+parseNumber = parsePlainInteger
     <|> parsePrefixedInteger
     <|> parseBinary
     <|> parseOctal
     <|> parseHex 
 
-parsePlainFloat = liftM (Float . read) $ try $ parseFloat
+parseFloat :: Parser LispVal
+parseFloat = parsePrefixedFloat <|> parsePlainFloat
 
-parsePrefixedFloat = liftM (Float . read) $ try $ string "#d" >> parseFloat
+parseComplex = do
+    x <- parsePlainNumber
+    char '+'
+    y <- parsePlainNumber
+    char 'i'
+    return $ Complex $ ((read x) :+ (read y))
+    where
+	parsePlainNumber = try float <|> many1 digit 
 
-parseFloat = do
+parsePlainFloat = liftM (Float . read) $ try $ float
+
+parsePrefixedFloat = liftM (Float . read) $ try $ string "#d" >> float
+
+float = do
             x <- many1 digit
             char '.'
             y <- many1 digit
@@ -122,6 +132,8 @@ parseHex = prefixNumberParser "#x" readHex' hexDigit where readHex' = fst . head
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
+    <|> try parseComplex
+    <|> try parseFloat 
     <|> try parseNumber
     <|> try parseBool
     <|> try parseChar
@@ -133,7 +145,8 @@ data LispVal    = Atom String
                 | DottedList [LispVal] LispVal
                 | Number Integer
                 | Float Double
-                | String String
+                | Complex (Complex Double)
+		| String String
                 | Bool Bool
                 | Character Char
-                deriving Show
+		deriving Show
