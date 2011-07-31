@@ -177,9 +177,6 @@ data LispVal    = Atom String
 
 --tests
 
-testAtom = TestCase $ shouldParse (Atom "aaaa") "aaaa"
-testString = TestCase $ shouldParse (String "aaaa") "\"aaaa\""
-
 thingsThatShouldParse = [
             (Atom "anAtom", "anAtom")
             , (String "a string", "\"a string\"")
