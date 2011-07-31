@@ -4,6 +4,7 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
 import Numeric (readOct, readHex)
 import Data.Complex
+import Test.HUnit
 -- main
 
 main :: IO ()
@@ -17,9 +18,12 @@ symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
+readExpr input = case readExpr' input of
     Left err -> "No match: " ++ show err
     Right val -> "Found Value: " ++ show val
+
+readExpr' :: String -> Either ParseError LispVal 
+readExpr' = parse parseExpr "lisp"
 
 spaces :: Parser ()
 spaces = skipMany1 space
@@ -77,7 +81,6 @@ parseBool = do
     return $ case x of
         't' -> Bool True
         'f' -> Bool False
-
 
 -- lisp number
 parseNumber :: Parser LispVal
@@ -167,7 +170,24 @@ data LispVal    = Atom String
                 | Number Integer
                 | Float Double
                 | Complex (Complex Double)
-		| String String
+		        | String String
                 | Bool Bool
                 | Character Char
-		deriving Show
+		deriving (Show, Eq)
+
+--tests
+
+testAtom = TestCase $ shouldParse (Atom "aaaa") "aaaa"
+testString = TestCase $ shouldParse (String "aaaa") "\"aaaa\""
+
+thingsThatShouldParse = [
+            (Atom "anAtom", "anAtom")
+            , (String "a string", "\"a string\"")
+            ]
+
+runParserTests = runTestTT $ test $ map makeTest thingsThatShouldParse where makeTest (expected, input) = TestCase $ shouldParse expected input
+
+shouldParse :: LispVal -> String -> Assertion
+shouldParse expected input = assert' expected (readExpr' input) where
+            assert' expected (Right val) = assertEqual "" expected val
+            assert' expected (Left err) =  assertString ("Expected " ++ (show expected))
