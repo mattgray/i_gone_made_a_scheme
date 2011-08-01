@@ -180,6 +180,11 @@ data LispVal    = Atom String
 thingsThatShouldParse = [
             (Atom "anAtom", "anAtom")
             , (String "a string", "\"a string\"")
+            , (Number 1, "1")
+            , (Float 1.1111, "1.1111")
+            , (Complex (3 :+ 2), "3+2i")
+            , (Complex (3.4 :+ 2.1), "3.4+2.1i")
+            , (Complex (3 :+ 2.1), "3+2.1i")
             ]
 
 thingsThatShouldntParse = [
