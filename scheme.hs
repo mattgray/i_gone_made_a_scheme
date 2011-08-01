@@ -170,7 +170,7 @@ data LispVal    = Atom String
                 | Number Integer
                 | Float Double
                 | Complex (Complex Double)
-		        | String String
+		| String String
                 | Bool Bool
                 | Character Char
 		deriving (Show, Eq)
@@ -182,9 +182,24 @@ thingsThatShouldParse = [
             , (String "a string", "\"a string\"")
             ]
 
-runParserTests = runTestTT $ test $ map makeTest thingsThatShouldParse where makeTest (expected, input) = TestCase $ shouldParse expected input
+thingsThatShouldntParse = [
+            ("unterminated string", "\"blah blah")
+            ]
+
+
+
+
+
+runParserTests = runTestTT $ test $ shouldParseTests ++ shouldntParseTests where
+            shouldParseTests = map makeTest thingsThatShouldParse where makeTest (expected, input) = TestCase $ shouldParse expected input
+            shouldntParseTests = map makeTest thingsThatShouldntParse where makeTest (desc, input) = TestCase $ shouldntParse desc input 
 
 shouldParse :: LispVal -> String -> Assertion
 shouldParse expected input = assert' expected (readExpr' input) where
             assert' expected (Right val) = assertEqual "" expected val
             assert' expected (Left err) =  assertString ("Expected " ++ (show expected))
+
+shouldntParse :: String -> String -> Assertion
+shouldntParse desc input = assert' desc (readExpr' input) input where
+            assert' desc (Right val) input = assertString (desc ++ " " ++ input ++ " produced " ++ (show val))
+            assert' _ (Left err) _ = assertBool "" True
