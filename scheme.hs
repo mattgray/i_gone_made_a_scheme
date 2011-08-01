@@ -170,7 +170,7 @@ data LispVal    = Atom String
                 | Number Integer
                 | Float Double
                 | Complex (Complex Double)
-		| String String
+                | String String
                 | Bool Bool
                 | Character Char
 		deriving (Show, Eq)
@@ -178,10 +178,25 @@ data LispVal    = Atom String
 --tests
 
 thingsThatShouldParse = [
+            -- atoms
             (Atom "anAtom", "anAtom")
+            , (Atom "an!Atom", "an!Atom")
+            -- strings
             , (String "a string", "\"a string\"")
+            , (String "a \"escaped string", "\"a \\\"escaped string\"")
+            , (String "a \t \n \r string", "\"a \\t \\n \\r string\"")
+            -- numbers
+            , (Number 1, "1")
+            , (Number 12345, "12345")
+            , (Number 12345, "#d12345")
+            , (Number 8, "#o10")
+            , (Number 10, "#o12")
+            , (Number 15, "#xf")
+            , (Number 17, "#x11")
+            , (Number 3, "#b11")
             , (Number 1, "1")
             , (Float 1.1111, "1.1111")
+            , (Float 1.1111, "#d1.1111")
             , (Complex (3 :+ 2), "3+2i")
             , (Complex (3.4 :+ 2.1), "3.4+2.1i")
             , (Complex (3 :+ 2.1), "3+2.1i")
@@ -189,6 +204,8 @@ thingsThatShouldParse = [
 
 thingsThatShouldntParse = [
             ("unterminated string", "\"blah blah")
+            , ("symbol not allowed in atom", "(at.om a)")
+            , ("atom begining in digit", "(8s dd)")
             ]
 
 
