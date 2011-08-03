@@ -215,6 +215,7 @@ thingsThatShouldParse = [
             -- dotted list
             , (DottedList [Atom "dotted"] (Atom "list"), "(dotted . list)")
             --quoted list
+            , (List [Atom "quote", Atom "a"], "'a")
             , (List [Atom "quote", List [Atom "a",Atom "b"]], "'(a b)")
             --multi list
             , (List [Atom "a", List [Atom "quote",List [Atom "quoted", DottedList [Atom "dotted"] (String "list")]], Atom "test", Number 400], "(a '(quoted (dotted . \"list\")) test 400)")
@@ -228,6 +229,7 @@ thingsThatShouldntParse = [
             , ("dodgy hash literal thingy", "#w")
             , ("mismatched parens", "(a")
             , ("comma in list", "(a , b)")
+            , ("unmatched parens in quoted list", "('(a b")
             ]
 
 
