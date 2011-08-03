@@ -200,12 +200,34 @@ thingsThatShouldParse = [
             , (Complex (3 :+ 2), "3+2i")
             , (Complex (3.4 :+ 2.1), "3.4+2.1i")
             , (Complex (3 :+ 2.1), "3+2.1i")
+            -- boolean
+            , (Bool True, "#t")
+            , (Bool False, "#f")
+            -- character
+            , (Character 'a', "#\\a")
+            , (Character ' ', "#\\space")
+            , (Character '\n', "#\\newline")
+            -- list
+            , (List [], "()")
+            , (List [Atom "a", Atom "b"], "(a b)")
+            , (List [Atom "a", String "b"], "(a \"b\")")
+            , (List [Atom "a", List [Atom "b", Atom "c"]], "(a (b c))")
+            -- dotted list
+            , (DottedList [Atom "dotted"] (Atom "list"), "(dotted . list)")
+            --quoted list
+            , (List [Atom "quote", List [Atom "a",Atom "b"]], "'(a b)")
+            --multi list
+            , (List [Atom "a", List [Atom "quote",List [Atom "quoted", DottedList [Atom "dotted"] (String "list")]], Atom "test", Number 400], "(a '(quoted (dotted . \"list\")) test 400)")
+            
             ]
 
 thingsThatShouldntParse = [
             ("unterminated string", "\"blah blah")
             , ("symbol not allowed in atom", "(at.om a)")
             , ("atom begining in digit", "(8s dd)")
+            , ("dodgy hash literal thingy", "#w")
+            , ("mismatched parens", "(a")
+            , ("comma in list", "(a , b)")
             ]
 
 
