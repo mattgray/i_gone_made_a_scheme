@@ -15,7 +15,7 @@ main = do
 -- parser
 
 symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!$%&|*/:<=>?@^_~"
 
 readExpr :: String -> String
 readExpr input = case readExpr' input of
@@ -112,7 +112,12 @@ float = do
             y <- many1 digit
             return $ x ++ "." ++ y
 
-parsePlainInteger = liftM (Number . read) $ many1 digit
+parsePlainInteger = do
+    sign <- option '+' $ oneOf "+-"
+    int <- many1 digit
+    return $ Number $ case sign of
+        '+' -> read int
+        '-' -> negate (read int)
 
 -- prefixed number notation combinator
 prefixNumberParser :: String -> (String -> Integer) -> Parser Char -> Parser LispVal
@@ -150,9 +155,7 @@ parseQuoted = liftM quote $ char '\'' >> parseExpr where quote x = List [Atom "q
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
-    <|> try parseComplex
-    <|> try parseFloat 
-    <|> try parseNumber
+    <|> parseAllNumbers
     <|> try parseBool
     <|> try parseChar
     <|> parseQuoted
@@ -161,6 +164,9 @@ parseExpr = parseAtom
 	x <- try parseList <|> parseDottedList
 	char ')'
 	return x
+
+parseAllNumbers :: Parser LispVal
+parseAllNumbers = (try parseComplex) <|> (try parseFloat) <|> (try parseNumber)
 
 -- language
 
@@ -187,6 +193,8 @@ thingsThatShouldParse = [
             , (String "a \t \n \r string", "\"a \\t \\n \\r string\"")
             -- numbers
             , (Number 1, "1")
+            , (Number 1, "+1")
+            , (Number (-1), "-1")
             , (Number 12345, "12345")
             , (Number 12345, "#d12345")
             , (Number 8, "#o10")
@@ -198,6 +206,7 @@ thingsThatShouldParse = [
             , (Float 1.1111, "1.1111")
             , (Float 1.1111, "#d1.1111")
             , (Complex (3 :+ 2), "3+2i")
+            , (Complex (3 :+ (-2)), "3-2i")
             , (Complex (3.4 :+ 2.1), "3.4+2.1i")
             , (Complex (3 :+ 2.1), "3+2.1i")
             -- boolean
