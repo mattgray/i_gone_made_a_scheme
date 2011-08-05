@@ -82,14 +82,6 @@ parseBool = do
         't' -> Bool True
         'f' -> Bool False
 
--- lisp number
-parseNumber :: Parser LispVal
-parseNumber = parsePlainInteger
-    <|> parsePrefixedInteger
-    <|> parseBinary
-    <|> parseOctal
-    <|> parseHex 
-
 parseFloat :: Parser LispVal
 parseFloat = parsePrefixedFloat <|> parsePlainFloat
 
@@ -102,6 +94,20 @@ parseComplex = do
     where
 	parsePlainNumber = try float <|> many1 digit 
 
+parseComplex' :: Parser LispVal
+parseComplex' = do
+    real <- parseNumber
+    imaginary <- optionMaybe $ do {i <-parseNumber; char 'i'; return i}
+    return $ case imaginary of
+        Nothing -> real
+        (Just imaginary') -> Complex $ ((value real) :+ (value imaginary'))
+        where
+            value :: LispVal -> Double
+            value (Number x) = fromIntegral x
+            value (Float x) = x
+            value _ = error "not a numeric LispVal"
+
+
 parsePlainFloat = liftM (Float . read) $ try $ float
 
 parsePrefixedFloat = liftM (Float . read) $ try $ string "#d" >> float
@@ -112,12 +118,24 @@ float = do
             y <- many1 digit
             return $ x ++ "." ++ y
 
-parsePlainInteger = do
+parseNumber = do
     sign <- option '+' $ oneOf "+-"
-    int <- many1 digit
-    return $ Number $ case sign of
-        '+' -> read int
-        '-' -> negate (read int)
+    intPart <- intPart'
+    fracPart <- optionMaybe fracPart'
+    return $ case fracPart of
+        Nothing -> Number $ (sign' sign) intPart
+        Just x -> Float $ (sign' sign) ((fromIntegral intPart) + x) 
+        where 
+            sign' :: Num a => Char -> (a -> a)
+            sign' '+' = id
+            sign' '-' = negate
+            sign _ = error "not a sign"
+
+fracPart' :: Parser Double
+fracPart' = liftM (read . ((++) "0."))  $ char '.' >> many1 digit
+
+intPart' :: Parser Integer
+intPart' = liftM read $ many1 digit
 
 -- prefixed number notation combinator
 prefixNumberParser :: String -> (String -> Integer) -> Parser Char -> Parser LispVal
@@ -155,7 +173,7 @@ parseQuoted = liftM quote $ char '\'' >> parseExpr where quote x = List [Atom "q
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
-    <|> parseAllNumbers
+    <|> parseComplex' 
     <|> try parseBool
     <|> try parseChar
     <|> parseQuoted
@@ -165,8 +183,6 @@ parseExpr = parseAtom
 	char ')'
 	return x
 
-parseAllNumbers :: Parser LispVal
-parseAllNumbers = (try parseComplex) <|> (try parseFloat) <|> (try parseNumber)
 
 -- language
 
@@ -206,7 +222,7 @@ thingsThatShouldParse = [
             , (Float 1.1111, "1.1111")
             , (Float 1.1111, "#d1.1111")
             , (Complex (3 :+ 2), "3+2i")
-            , (Complex (3 :+ (-2)), "3-2i")
+--            , (Complex (3 :+ (-2)), "3-2i")
             , (Complex (3.4 :+ 2.1), "3.4+2.1i")
             , (Complex (3 :+ 2.1), "3+2.1i")
             -- boolean
@@ -246,7 +262,7 @@ thingsThatShouldntParse = [
 
 
 runParserTests = runTestTT $ test $ shouldParseTests ++ shouldntParseTests where
-            shouldParseTests = map makeTest thingsThatShouldParse where makeTest (expected, input) = TestCase $ shouldParse expected input
+            shouldParseTests = map makeTest thingsThatShouldParse where makeTest (expected, input) = TestLabel input $ TestCase $ shouldParse expected input
             shouldntParseTests = map makeTest thingsThatShouldntParse where makeTest (desc, input) = TestCase $ shouldntParse desc input 
 
 shouldParse :: LispVal -> String -> Assertion
