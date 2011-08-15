@@ -57,42 +57,9 @@ parseString = do
                 'r' -> '\r'
                 't' -> '\t'
 
--- lisp char
-
-parseChar :: Parser LispVal
-parseChar = liftM (Character . getCharacter) $ string "#\\" >> (characterName <|> character) 
-    where
-        characterName = (try $ string "space" <|> string "newline")
-        
-        character = do
-            x' <- anyChar
-            notFollowedBy alphaNum
-            return [x']
-        
-        getCharacter "space" = ' '
-        getCharacter "newline" = '\n'
-        getCharacter (c:cs) = c
-
--- lisp bool
-parseBool :: Parser LispVal
-parseBool = do
-    char '#'
-    x <- oneOf "tf"
-    return $ case x of
-        't' -> Bool True
-        'f' -> Bool False
-
 parseFloat :: Parser LispVal
 parseFloat = parsePrefixedFloat <|> parsePlainFloat
 
-parseComplex = do
-    x <- parsePlainNumber
-    char '+'
-    y <- parsePlainNumber
-    char 'i'
-    return $ Complex $ ((read x) :+ (read y))
-    where
-	parsePlainNumber = try float <|> many1 digit 
 
 parseComplex' :: Parser LispVal
 parseComplex' = do
@@ -167,6 +134,30 @@ parseDottedList = (liftM2 DottedList) head tail where
 parseQuoted :: Parser LispVal
 parseQuoted = liftM quote $ char '\'' >> parseExpr where quote x = List [Atom "quote", x]
 
+-- things beginning in #
+-- true, false, radix prefixed number, characters
+parseHash :: Parser LispVal
+parseHash = do
+    char '#'
+    x <- oneOf "tf\\oxbd"
+    rest <- option "" (characterName <|> character)
+    return $ case x of 
+        't'     -> Bool True
+        'f'     -> Bool False
+        '\\'    -> getCharacter rest
+
+characterName = string "space" <|> string "newline"
+
+character = do
+    rest' <- anyChar
+    notFollowedBy alphaNum
+    return [rest']
+
+getCharacter "space" = Character ' '
+getCharacter "newline" = Character '\n'
+getCharacter [c] = Character c
+getCharacter _ = error "parsing character literal - multiple characters after #\\" 
+
 
 -- expression parser
 
@@ -174,8 +165,9 @@ parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
     <|> parseComplex' 
-    <|> try parseBool
-    <|> try parseChar
+    <|> parseHash
+    -- <|> try parseBool
+    -- <|> try parseChar
     <|> parseQuoted
     <|> do 
 	char '('
