@@ -139,12 +139,14 @@ parseQuoted = liftM quote $ char '\'' >> parseExpr where quote x = List [Atom "q
 parseHash :: Parser LispVal
 parseHash = do
     char '#'
-    x <- oneOf "tf\\oxbd"
-    rest <- option "" (characterName <|> character)
-    return $ case x of 
-        't'     -> Bool True
-        'f'     -> Bool False
-        '\\'    -> getCharacter rest
+    x' <- boolean' <|> characterLiteral <|> radixPrefixedNumber
+    return $ x'
+
+boolean' :: Parser LispVal
+boolean' = oneOf "tf" >>= \x -> return $ if x == 't' then Bool True else Bool False 
+
+characterLiteral :: Parser LispVal
+characterLiteral = char '\\' >> (characterName <|> character) >>= \x -> return $ getCharacter x
 
 characterName = string "space" <|> string "newline"
 
@@ -158,6 +160,11 @@ getCharacter "newline" = Character '\n'
 getCharacter [c] = Character c
 getCharacter _ = error "parsing character literal - multiple characters after #\\" 
 
+radixPrefixedNumber :: Parser LispVal
+radixPrefixedNumber = radixPrefixOctal <|> radixPrefixHex
+
+radixPrefixOctal = char 'o' >> many1 octDigit >>= (return . Number . fst . head . readOct)
+radixPrefixHex = char 'x' >> many1 hexDigit >>= (return . Number . fst . head . readHex)
 
 -- expression parser
 
@@ -166,8 +173,6 @@ parseExpr = parseAtom
     <|> parseString
     <|> parseComplex' 
     <|> parseHash
-    -- <|> try parseBool
-    -- <|> try parseChar
     <|> parseQuoted
     <|> do 
 	char '('
