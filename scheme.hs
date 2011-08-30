@@ -13,7 +13,7 @@ main = getArgs >>= (print . eval . readExpr . head)
 -- parser
 
 symbol :: Parser Char
-symbol = oneOf "!$%&|*/:<=>?@^_~"
+symbol = oneOf "!$%&|*/:<=>?@^_~+"
 
 readExpr :: String -> LispVal
 readExpr input = case readExpr' input of
@@ -204,6 +204,13 @@ eval val@(Bool _) = val
 eval val@(Complex _) = val
 eval val@(Character _) = val
 eval (List [Atom "quote", val]) = val
+eval (List (Atom func : args)) = apply func $ map eval args
+
+apply :: String -> [LispVal] -> LispVal
+apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives = []
 
 --tests
 
@@ -242,6 +249,7 @@ thingsThatShouldParse = [
             , (Character '\n', "#\\newline")
             -- list
             , (List [], "()")
+            , (List [Atom "+", Number 2, Number 2], "(+ 2 2)")
             , (List [Atom "a", Atom "b"], "(a b)")
             , (List [Atom "a", String "b"], "(a \"b\")")
             , (List [Atom "a", List [Atom "b", Atom "c"]], "(a (b c))")
