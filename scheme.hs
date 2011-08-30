@@ -8,20 +8,19 @@ import Test.HUnit
 -- main
 
 main :: IO ()
-main = do 
-    args <- getArgs
-    putStrLn $ readExpr $ head args
+main = getArgs >>= (print . eval . readExpr . head)
 
 -- parser
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*/:<=>?@^_~"
 
-readExpr :: String -> String
+readExpr :: String -> LispVal
 readExpr input = case readExpr' input of
-    Left err -> "No match: " ++ show err
-    Right val -> "Found Value: " ++ show val
+    Left err -> String $ "No match: " ++ show err
+    Right val -> val
 
+--used for parser tests
 readExpr' :: String -> Either ParseError LispVal 
 readExpr' = parse parseExpr "lisp"
 
@@ -194,6 +193,17 @@ showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tai
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
+
+--evaluation
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Float _) = val
+eval val@(Bool _) = val
+eval val@(Complex _) = val
+eval val@(Character _) = val
+eval (List [Atom "quote", val]) = val
 
 --tests
 
