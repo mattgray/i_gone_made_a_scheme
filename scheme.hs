@@ -57,12 +57,8 @@ parseString = do
                 'r' -> '\r'
                 't' -> '\t'
 
-parseFloat :: Parser LispVal
-parseFloat = parsePrefixedFloat <|> parsePlainFloat
-
-
-parseComplex' :: Parser LispVal
-parseComplex' = do
+parseComplex :: Parser LispVal
+parseComplex = do
     real <- parseNumber
     imaginary <- optionMaybe $ do {i <-parseNumber; char 'i'; return i}
     return $ case imaginary of
@@ -73,11 +69,6 @@ parseComplex' = do
             value (Number x) = fromIntegral x
             value (Float x) = x
             value _ = error "not a numeric LispVal"
-
-
-parsePlainFloat = liftM (Float . read) $ try $ float
-
-parsePrefixedFloat = liftM (Float . read) $ try $ string "#d" >> float
 
 float = do
             x <- many1 digit
@@ -104,21 +95,9 @@ fracPart' = liftM (read . ((++) "0."))  $ char '.' >> many1 digit
 intPart' :: Parser Integer
 intPart' = liftM read $ many1 digit
 
--- prefixed number notation combinator
-prefixNumberParser :: String -> (String -> Integer) -> Parser Char -> Parser LispVal
-prefixNumberParser prefix reader parser' = liftM (Number . reader) $ try $ string prefix >> many1 parser'
-
-parsePrefixedInteger = prefixNumberParser "#d" read digit
-
-parseBinary = prefixNumberParser "#b" readBinary (oneOf "01")
-
 readBinary = foldl readBinary' 0 where 
     readBinary' acc '0' = acc * 2  
     readBinary' acc '1' = (acc * 2) + 1  
-
-parseOctal = prefixNumberParser "#o" readOct' octDigit where readOct' = fst . head . readOct
-
-parseHex = prefixNumberParser "#x" readHex' hexDigit where readHex' = fst . head . readHex
 
 -- lisp list
 parseList :: Parser LispVal
@@ -172,7 +151,7 @@ radixPrefixBinary = char 'b' >> (many1 $ oneOf "01") >>= (return . Number . read
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
     <|> parseString
-    <|> parseComplex' 
+    <|> parseComplex 
     <|> parseHash
     <|> parseQuoted
     <|> do 
