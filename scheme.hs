@@ -161,11 +161,12 @@ getCharacter [c] = Character c
 getCharacter _ = error "parsing character literal - multiple characters after #\\" 
 
 radixPrefixedNumber :: Parser LispVal
-radixPrefixedNumber = radixPrefixOctal <|> radixPrefixHex
+radixPrefixedNumber = radixPrefixOctal <|> radixPrefixHex <|> radixPrefixBinary <|> radixPrefixDecimal
 
 radixPrefixOctal = char 'o' >> many1 octDigit >>= (return . Number . fst . head . readOct)
 radixPrefixHex = char 'x' >> many1 hexDigit >>= (return . Number . fst . head . readHex)
-
+radixPrefixDecimal = char 'd' >> parseNumber 
+radixPrefixBinary = char 'b' >> (many1 $ oneOf "01") >>= (return . Number . readBinary)
 -- expression parser
 
 parseExpr :: Parser LispVal
