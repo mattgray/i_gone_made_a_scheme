@@ -172,7 +172,28 @@ data LispVal    = Atom String
                 | String String
                 | Bool Bool
                 | Character Char
-		deriving (Show, Eq)
+		deriving (Eq)
+
+instance Show LispVal where
+    show = showVal
+
+showVal :: LispVal -> [Char]
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Float contents) = show contents
+showVal (Complex complex) = (show $ realPart complex) ++ (sign' $ imagPart complex) ++ (show $ imagPart complex) ++ "i"
+    where sign' x = if x < 0 then "" else "+"  
+
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (Character c) = show c
+
+showVal (List contents) = "(" ++ unwordsList contents ++ ")" 
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")" 
+
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
 
 --tests
 
