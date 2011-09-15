@@ -8,12 +8,12 @@ import Test.HUnit
 -- main
 
 main :: IO ()
-main = getArgs >>= (print . eval . readExpr . head)
+main = getArgs >>= (print . showVal . eval . readExpr . head)
 
 -- parser
 
 symbol :: Parser Char
-symbol = oneOf "!$%&|*/:<=>?@^_~+"
+symbol = oneOf "!$%&|*/:<=>?@^_~+-"
 
 readExpr :: String -> LispVal
 readExpr input = case readExpr' input of
@@ -27,8 +27,21 @@ readExpr' = parse parseExpr "lisp"
 spaces :: Parser ()
 spaces = skipMany1 space
 
---lisp atom
+-- expression parser
+parseExpr :: Parser LispVal
+parseExpr = 
+    parseComplex 
+    <|> parseAtom
+    <|> parseString 
+    <|> parseHash
+    <|> parseQuoted
+    <|> do 
+	char '('
+	x <- try parseList <|> parseDottedList
+	char ')'
+	return x
 
+--lisp atom
 parseAtom :: Parser LispVal
 parseAtom = do
     first <- letter <|> symbol
@@ -37,7 +50,6 @@ parseAtom = do
     return $ Atom atom   
 
 -- lisp string
-
 parseString :: Parser LispVal
 parseString = do 
     char '"'
@@ -55,7 +67,7 @@ parseString = do
                 'n' -> '\n'
                 'r' -> '\r'
                 't' -> '\t'
-
+-- numbers
 parseComplex :: Parser LispVal
 parseComplex = do
     real <- parseNumber
@@ -68,12 +80,6 @@ parseComplex = do
             value (Number x) = fromIntegral x
             value (Float x) = x
             value _ = error "not a numeric LispVal"
-
-float = do
-            x <- many1 digit
-            char '.'
-            y <- many1 digit
-            return $ x ++ "." ++ y
 
 parseNumber = do
     sign <- option '+' $ oneOf "+-"
@@ -145,23 +151,8 @@ radixPrefixOctal = char 'o' >> many1 octDigit >>= (return . Number . fst . head 
 radixPrefixHex = char 'x' >> many1 hexDigit >>= (return . Number . fst . head . readHex)
 radixPrefixDecimal = char 'd' >> parseNumber 
 radixPrefixBinary = char 'b' >> (many1 $ oneOf "01") >>= (return . Number . readBinary)
--- expression parser
-
-parseExpr :: Parser LispVal
-parseExpr = parseAtom 
-    <|> parseString
-    <|> parseComplex 
-    <|> parseHash
-    <|> parseQuoted
-    <|> do 
-	char '('
-	x <- try parseList <|> parseDottedList
-	char ')'
-	return x
-
 
 -- language
-
 data LispVal    = Atom String
                 | List [LispVal]
                 | DottedList [LispVal] LispVal
@@ -171,10 +162,7 @@ data LispVal    = Atom String
                 | String String
                 | Bool Bool
                 | Character Char
-		deriving (Eq)
-
-instance Show LispVal where
-    show = showVal
+		deriving (Eq, Show)
 
 showVal :: LispVal -> [Char]
 showVal (String contents) = "\"" ++ contents ++ "\""
@@ -238,6 +226,7 @@ thingsThatShouldParse = [
             -- atoms
             (Atom "anAtom", "anAtom")
             , (Atom "an!Atom", "an!Atom")
+            , (Atom "+", "+")
             -- strings
             , (String "a string", "\"a string\"")
             , (String "a \"escaped string", "\"a \\\"escaped string\"")
@@ -257,7 +246,7 @@ thingsThatShouldParse = [
             , (Float 1.1111, "1.1111")
             , (Float 1.1111, "#d1.1111")
             , (Complex (3 :+ 2), "3+2i")
---            , (Complex (3 :+ (-2)), "3-2i")
+            , (Complex (3 :+ (-2)), "3-2i")
             , (Complex (3.4 :+ 2.1), "3.4+2.1i")
             , (Complex (3 :+ 2.1), "3+2.1i")
             -- boolean
@@ -270,6 +259,7 @@ thingsThatShouldParse = [
             -- list
             , (List [], "()")
             , (List [Atom "+", Number 2, Number 2], "(+ 2 2)")
+            , (List [Atom "-", Number 2, Number 2], "(- 2 2)")
             , (List [Atom "a", Atom "b"], "(a b)")
             , (List [Atom "a", String "b"], "(a \"b\")")
             , (List [Atom "a", List [Atom "b", Atom "c"]], "(a (b c))")
