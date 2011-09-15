@@ -30,8 +30,8 @@ spaces = skipMany1 space
 -- expression parser
 parseExpr :: Parser LispVal
 parseExpr = 
-    parseComplex 
-    <|> parseAtom
+    parseAtom 
+    <|> parseComplex
     <|> parseString 
     <|> parseHash
     <|> parseQuoted
@@ -46,9 +46,15 @@ parseAtom :: Parser LispVal
 parseAtom = do
     first <- letter <|> symbol
     rest <- many $ letter <|> digit <|> symbol
+    let allNumeric = (not (null rest)) && (all (\x -> x `elem` "0123456789") rest)
     let atom = first:rest
-    return $ Atom atom   
-
+    let x = (read rest) :: Integer
+    if allNumeric then
+        case first of
+            '+' -> return $ Number x 
+            '-' -> return $ Number $ negate x
+            _  -> return $ Atom atom
+        else return $ Atom atom   
 -- lisp string
 parseString :: Parser LispVal
 parseString = do 
